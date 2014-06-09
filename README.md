@@ -30,5 +30,6 @@ waves = np.arange(0,len(ydata))*crdelt+crval
   * Again, find integrated fluxes of the emission features.  The two SII lines are at 6716 and 6731 angstroms.  Remember to subtract off the continuum flux, and remember that the wavelengths are shifted.
   * Refer to the graph from Osterbrock (available on page 11 of this [PDF](http://zuserver2.star.ucl.ac.uk/~msw/teaching/PHAS2521/notes_2.pdf)), to roughly determine the electron density based on your SII line ratio.  (The graph on page 10 of that same PDF should also reproduce the temp you calculated in 3b)
 
-Bonus.  Rather than just integrate the flux in the emission lines, try to fit a Gaussian curve to the feature, resample to a higher resolution, and integrate that.  There are a ton of ways to do function fitting in python, but the easiest is perhaps scipy.optimize.curve_fit, so look into that documentation.
+Bonus.  Rather than just integrate the flux in the emission lines, try to fit a Gaussian curve to the feature, resample to a higher resolution, and integrate that.  There are a ton of ways to do function fitting in python, but the easiest is perhaps ```scipy.optimize.curve_fit```, so look into that documentation.
+
 Bonus+.  Try a Lorentzian profile fit, or even a Voigt profile, to better match the [spectral line shape](http://en.wikipedia.org/wiki/Spectral_line_shape).
