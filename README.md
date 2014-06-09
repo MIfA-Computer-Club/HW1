@@ -23,7 +23,7 @@ waves = np.arange(0,len(ydata))*crdelt+crval
 ```
 
 3)  Tell me the approximate electron temperature of the gas in the HII region using OIII line ratios (check out the attached images to see which lines I mean).
-  * First, for the 4959 and 5007 OIII lines, integrate each emission feature to get the flux of the lines (but remember to subtract off the continuum flux [the flux just off the line]).  For the 4363 line (arrow pointing to it in [hiiOxygen.gif](../blob/master/hiiOxygen.gif)), just choose the peak intensity of the line since it's so small/broad.  Terry messed up the wavelength calibration, so the whole spectrum is ~10 angstroms off (i.e. the 4959 emission line is at ~4967).  You should get flux values on the order of 10^-14 -> 10^-15 for the strong lines, and ~10^-16 for the 4363 line.
+  * First, for the 4959 and 5007 OIII lines, integrate each emission feature to get the flux of the lines (but remember to subtract off the continuum flux [the flux just off the line]).  For the 4363 line (arrow pointing to it in [hiiOxygen.gif](../master/hiiOxygen.gif)), just choose the peak intensity of the line since it's so small/broad.  Terry messed up the wavelength calibration, so the whole spectrum is ~10 angstroms off (i.e. the 4959 emission line is at ~4967).  You should get flux values on the order of 10^-14 -> 10^-15 for the strong lines, and ~10^-16 for the 4363 line.
   * Use the formula on page 3 of this [PDF](http://www-astro.physics.ox.ac.uk/~pfr/C1_TT/C1_ISM_Lecture4.pdf) to calculate the electron temperature given the OIII line fluxes you calculated.
 
 4)  Tell me the approximate electron density of the HII region using sulfur lines.
