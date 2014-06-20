@@ -5,7 +5,13 @@ import scipy.integrate
 import matplotlib.pyplot as plt
 
 class Line:
-
+	"""
+	Class for spectral lines
+	Fits the line when first called
+	Provide a name, line center, wavelength and flux arrays
+	Array size doesn't matter as long as it contains line center
+	Class will have line name, fitted center, norm, FWHM and flux after init
+	"""
 	def __init__(self,name,center,waves,spec):
 
 		window, cdelt = 20., waves[1]-waves[0]
@@ -20,46 +26,59 @@ class Line:
 		self.flux = scipy.integrate.quad(gauss_fwhm, min(waves_cut)-50, max(waves_cut)+50, args=(self.A,self.x0,self.fwhm))[0]
 
 def gauss_fwhm(x, A, x0, fwhm):
-
-	sig = fwhm/2./np.sqrt(2*np.log(2))
+	"""
+	Gaussian function using FHWM
+	"""
+	sig = fwhm/2./np.sqrt(2*np.log(2)) #Convert FWHM to sigma
 	return A*np.exp(-(x-x0)**2/2./sig**2)
 	
 def get_data(fname):
-
+	"""
+	Get data from FITS spectrum
+	"""
 	data = pyfits.open(fname)
 	hdr = data[0].header
 	spec = data[0].data
-	kwargs = (hdr['CRPIX1'], hdr['CDELT1'], hdr['CRVAL1'])
-	data.close()	
-	return spec, kwargs
+	crpix1, cdelt1, crval1 = hdr['CRPIX1'], hdr['CDELT1'], hdr['CRVAL1']
+	data.close()
+
+	waves = ((np.array(range(spec.size))+crpix1) * cdelt1) + crval1
+	waves = waves - 10 ### Correction for Calibration Error
+	
+	return waves, spec
 	
 def continuum_fit(waves,spec):
-
+	"""
+	Continuum Fitting
+	"""
 	wave_cont, spec_cont = waves, spec
 	wave_cont, spec_cont = wave_cont[spec_cont < np.std(spec_cont)], spec_cont[spec_cont < np.std(spec_cont)] # Remove parts that deviate more than 1 sigma
 
+	#Smooth spectrum by box-car
 	w = np.array([0,0,1,1,1,0,0]) # 3 px Box
-	spec_cont = np.convolve(w,spec_cont/w.sum(),'same') # Convolve spectrum with box to smooth
+	spec_cont = np.convolve(w,spec_cont/w.sum(),'same') # Convolve spectrum
 	cont_fit = np.polyfit(wave_cont,spec_cont,4) # Fit continuum
 	cont_func = np.poly1d(cont_fit) # Create continuum function
 	return cont_func
 	
 def plot():
+	"""
+	Main plotting function
+	"""
+	waves, spec = get_data("../../hIIspec.fits") # Get data
 
-	spec,kwargs = get_data("hIIspec.fits")
-	crpix1, cdelt1, crval1 = kwargs
-	waves = ((np.array(range(spec.size))+crpix1) * cdelt1) + crval1
-	waves = waves - 10 ### Correction for Error
-
-	fig, ax = plt.subplots(1,1,figsize=(20,8),dpi=300)
+	fig, ax = plt.subplots(1,1,figsize=(20,8),dpi=300) # Initialize figure
 	ax.set_xlabel(r'Wavelength ($\AA$)')
 	ax.set_ylabel(r'Flux [$erg \cdot\ s^{-1} \cdot\ cm^{-2}$]')
 	ax.set_title('Spectrum')
 		
-	ax.plot(waves,spec,c='k',lw=1.0,alpha=0.5)
-	continuum = continuum_fit(waves,spec)
-	spec = spec - continuum(waves) # Subtract continuum
+	ax.plot(waves,spec,c='k',lw=1.0,alpha=0.5) # Plot the spectrum
+	continuum = continuum_fit(waves,spec) # Fit continuum
+	spec = spec - continuum(waves) # Subtract continuum off
 
+	# Fit the 5 lines in question
+	# Line variables are made global so they may be used
+	# by other funcs without explicitly passing as args
 	global o4363,o4959,o5007,s6716,s6731
 	o4363 = Line('[OIII]4363', 4363., waves, spec)
 	o4959 = Line('[OIII]4959', 4959., waves, spec)
@@ -68,31 +87,40 @@ def plot():
 	s6731 = Line('[SII]6731', 6731., waves, spec)
 	lines = [o4363,o4959,o5007,s6716,s6731]
 	
+	# Setup a colormap for the lines
 	colormap = plt.cm.gist_rainbow
 	cindex = np.linspace(0.1,0.9,len(lines))
 
+	# Overplot the fitted lines on the spec
 	for i,line in enumerate(lines):
 	
-		plot_waves = np.linspace(line.x0-25.,line.x0+25.,50)
+		plot_waves = np.linspace(line.x0-25.,line.x0+25.,100) # High resolution wavelength range
 		ax.plot(plot_waves, gauss_fwhm(plot_waves,line.A,line.x0,line.fwhm)+continuum(plot_waves), c=colormap(cindex[i]), label=line.name)
 		
+		# Output the parameters for each line
 		print("Line:\t%s" % (line.name))
 		print(u"Fit:\tCenter\t= %.2f \u00B1 %.3f [Angs]" % (line.x0,line.dx0))
 		print(u"\tFWHM\t= %.4f \u00B1 %.4f [Angs]" % (line.fwhm,line.dfwhm))
 		print("Flux:\t%.2e\n" % (line.flux))
 
-	ax.legend()
-	fig.savefig('spectrum.png')
+	ax.legend() # Enable the legend
+	fig.savefig('spectrum.png') # Save plot
 
-def calc_T(o4363,o4959,o5007):
-
+def calc_T(o4363,o4959,o5007): 
+	"""
+	Calculate the Temp. using OIII line ratios
+	"""
 	o3_ratio = o4363/(o4959+o5007)
 	T = -33000./np.log(o3_ratio/0.14)
 	print("[OIII]4363/[OIII]4959+5007 = %.4f" % o3_ratio)
 	print("Temperature: %.2f K \n" % T)
 
 def calc_ne(s6716,s6731):
-
+	"""
+	Calculate the electron density using SII line ratios
+	No mathematical expr. for now
+	Using direct value from graph
+	"""
 	s2_ratio = s6716/s6731
 	n_e = 35. # from graph
 	print("[SII]6716/[SII]6731 = %.4f" % s2_ratio)
