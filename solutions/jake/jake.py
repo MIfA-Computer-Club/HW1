@@ -62,7 +62,7 @@ def plot_spec(x, y, filename, logy=False, ymaxn=None):
 def line_flux_simple(x, y, x1, x2, y0=None):
     """Integrate y as a function of x between x1 and x2
 
-    Simple trapezoid integrator an option for constant continuum
+    Simple trapezoid integrator with an option for constant continuum
     subtraction.
 
     Parameters
