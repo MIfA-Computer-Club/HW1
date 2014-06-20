@@ -59,12 +59,13 @@ def continuum_fit(waves,spec):
     Continuum Fitting
     """
     wave_cont, spec_cont = waves, spec
-    wave_cont, spec_cont = wave_cont[spec_cont < np.std(spec_cont)], spec_cont[spec_cont < np.std(spec_cont)] # Remove parts that deviate more than 1 sigma
-
+    wave_cont, spec_cont = wave_cont[abs(spec_cont-np.mean(spec_cont)) < np.std(spec_cont)], spec_cont[abs(spec_cont-np.mean(spec_cont)) < np.std(spec_cont)] # Remove deviations more than 1 sigma
+    cond = (wave_cont > 4200)
+    
     #Smooth spectrum by box-car
-    w = np.array([0,0,1,1,1,0,0]) # 3 px Box
-    spec_cont = np.convolve(w,spec_cont/w.sum(),'same') # Convolve spectrum
-    cont_fit = np.polyfit(wave_cont,spec_cont,4) # Fit continuum
+    box = np.array([0,0,1,1,1,0,0]) # 3 px Box
+    spec_cont = np.convolve(box,spec_cont/box.sum(),'same') # Convolve spectrum
+    cont_fit = np.polyfit(wave_cont[cond],spec_cont[cond],3) # Fit continuum
     cont_func = np.poly1d(cont_fit) # Create continuum function
     return cont_func
     
@@ -107,8 +108,8 @@ def plot():
         # Output the parameters for each line
         print("Line:\t%s" % (line.name))
         print(u"Fit:\tCenter\t= %.2f \u00B1 %.3f [Angs]" % (line.x0,line.dx0))
-        print(u"\tSigma\t= %.4f \u00B1 %.4f [Angs]" % (line.fwhm,line.dfwhm))
-        print(u"\tGamma\t= %.4f \u00B1 %.4f [Angs]" % (line.gamma,line.dgamma))
+        print(u"\tFWHM\t= %.4f \u00B1 %.4f [Angs]" % (line.fwhm,line.dfwhm))
+        print(u"\tGamma\t= %.4f \u00B1 %.4f [Angs]" % (abs(line.gamma),line.dgamma))
         print(u"Flux:\t%.2e [ergs/s/cm^-2]\n" % (line.flux))
 
     ax.legend() # Enable the legend
@@ -132,7 +133,7 @@ def calc_ne(s6716,s6731):
     s2_ratio = s6716/s6731
     n_e = 40. # from graph
     print("[SII]6716/[SII]6731 = %.4f" % s2_ratio)
-    print("e Density: %.2f cm^-3\n" % n_e)
+    print("e- Density: %.2f cm^-3\n" % n_e)
 
 
 plot()
