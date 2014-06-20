@@ -3,6 +3,7 @@ import numpy as np
 import scipy.optimize
 import scipy.integrate
 import matplotlib.pyplot as plt
+from scipy.special import wofz
 
 class Line:
     """
@@ -15,15 +16,13 @@ class Line:
     def __init__(self,name,center,waves,spec):
 
         window, cdelt = 20., waves[1]-waves[0]
-        
         spec_cut = spec[ ((center-0.5*window) <= waves) & (waves <= (center+0.5*window)) ]
         [center] = np.where(spec == max(spec_cut))
         spec_cut = spec[center-int(0.5*window/cdelt):center+int(0.5*window/cdelt)]
         waves_cut = waves[center-int(0.5*window/cdelt):center+int(0.5*window/cdelt)]
-        popt, pcov = scipy.optimize.curve_fit(gauss_fwhm, waves_cut, spec_cut, p0=(np.mean(spec_cut),np.mean(waves_cut),1.0))
-
-        self.name, [self.A,self.x0,self.fwhm], [self.dA,self.dx0,self.dfwhm] = name, popt, np.sqrt(np.diag(pcov))
-        self.flux = scipy.integrate.quad(gauss_fwhm, min(waves_cut)-50, max(waves_cut)+50, args=(self.A,self.x0,self.fwhm))[0]
+        popt, pcov = scipy.optimize.curve_fit(voigt_fwhm, waves_cut, spec_cut, p0=(np.mean(spec_cut),np.mean(waves_cut),1.0,1.0))
+        self.name, [self.A,self.x0,self.fwhm,self.gamma], [self.dA,self.dx0,self.dfwhm,self.dgamma] = name, popt, np.sqrt(np.diag(pcov))
+        self.flux, self.dflux = scipy.integrate.quad(voigt_fwhm, min(waves_cut)-50, max(waves_cut)+50, args=(self.A,self.x0,self.fwhm,self.gamma))
 
 def gauss_fwhm(x, A, x0, fwhm):
     """
@@ -31,6 +30,14 @@ def gauss_fwhm(x, A, x0, fwhm):
     """
     sig = fwhm/2./np.sqrt(2*np.log(2)) #Convert FWHM to sigma
     return A*np.exp(-(x-x0)**2/2./sig**2)
+    
+def voigt_fwhm(x, A, mu, fwhm, gamma):
+    """
+    Voigt function using FWHM
+    """
+    sigma = fwhm/2./np.sqrt(2*np.log(2)) #Convert FWHM to sigma
+    z = ((x-mu) + 1j*gamma) / (sigma *np.sqrt(2.0))
+    return A * np.real(wofz(z))
     
 def get_data(fname):
     """
@@ -67,7 +74,7 @@ def plot():
     """
     waves, spec = get_data("../../hIIspec.fits") # Get data
 
-    fig, ax = plt.subplots(1,1,figsize=(20,8),dpi=300) # Initialize figure
+    fig, ax = plt.subplots(1,1,figsize=(20,8),dpi=100) # Initialize figure
     ax.set_xlabel(r'Wavelength ($\AA$)')
     ax.set_ylabel(r'Flux [$erg \cdot\ s^{-1} \cdot\ cm^{-2}$]')
     ax.set_title('Spectrum')
@@ -95,13 +102,14 @@ def plot():
     for i,line in enumerate(lines):
     
         plot_waves = np.linspace(line.x0-25.,line.x0+25.,100) # High resolution wavelength range
-        ax.plot(plot_waves, gauss_fwhm(plot_waves,line.A,line.x0,line.fwhm)+continuum(plot_waves), c=colormap(cindex[i]), label=line.name)
+        ax.plot(plot_waves, voigt_fwhm(plot_waves,line.A,line.x0,line.fwhm,line.gamma)+continuum(plot_waves), c=colormap(cindex[i]), label=line.name)
         
         # Output the parameters for each line
         print("Line:\t%s" % (line.name))
         print(u"Fit:\tCenter\t= %.2f \u00B1 %.3f [Angs]" % (line.x0,line.dx0))
-        print(u"\tFWHM\t= %.4f \u00B1 %.4f [Angs]" % (line.fwhm,line.dfwhm))
-        print("Flux:\t%.2e\n" % (line.flux))
+        print(u"\tSigma\t= %.4f \u00B1 %.4f [Angs]" % (line.fwhm,line.dfwhm))
+        print(u"\tGamma\t= %.4f \u00B1 %.4f [Angs]" % (line.gamma,line.dgamma))
+        print(u"Flux:\t%.2e [ergs/s/cm^-2]\n" % (line.flux))
 
     ax.legend() # Enable the legend
     fig.savefig('spectrum.png') # Save plot
@@ -122,7 +130,7 @@ def calc_ne(s6716,s6731):
     Using direct value from graph
     """
     s2_ratio = s6716/s6731
-    n_e = 35. # from graph
+    n_e = 40. # from graph
     print("[SII]6716/[SII]6731 = %.4f" % s2_ratio)
     print("e Density: %.2f cm^-3\n" % n_e)
 
